@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>과제 마감 플래너 — 대학생 과제·일정 관리</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #1d4ed8;
+      --accent-hover: #1e40af;
+      --danger: #dc2626;
+      --danger-bg: #fef2f2;
+      --danger-border: #fecaca;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .container { max-width: 1152px; margin: 0 auto; padding: 24px 16px 72px; }
+    header {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(255,255,255,0.95); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border); padding: 0 16px; height: 56px;
+    }
+    .header-inner {
+      max-width: 1152px; height: 100%; margin: 0 auto;
+      display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    }
+    .brand { margin: 0; font-size: 18px; font-weight: 700; white-space: nowrap; }
+    .nav-links { display: none; gap: 20px; }
+    @media (min-width: 768px) { .nav-links { display: flex; } }
+    .nav-link {
+      border: 0; background: transparent; cursor: pointer; font-size: 14px; font-weight: 500;
+      color: #475569; padding: 6px 4px; white-space: nowrap;
+    }
+    .nav-link.active { color: var(--text); font-weight: 700; }
+    .btn-primary {
+      min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px;
+      background: var(--accent); color: #fff; font-size: 13px; font-weight: 600;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: #cbd5e1; color: #64748b; cursor: not-allowed; }
+    .summary-bar {
+      display: flex; flex-direction: column; gap: 16px;
+      padding-bottom: 20px; margin-bottom: 24px; border-bottom: 1px solid var(--border);
+    }
+    @media (min-width: 960px) {
+      .summary-bar { flex-direction: row; justify-content: space-between; align-items: flex-end; }
+    }
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 10px 8px;
+    }
+    .stat-cell { padding: 0 12px; border-right: 1px solid var(--border); text-align: center; }
+    .stat-cell:last-child { border-right: 0; }
+    .stat-label { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .stat-val { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-top: 2px; }
+    .layout { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 1024px) { .layout { grid-template-columns: 350px 1fr; align-items: start; } }
+    .aside-panel { display: none; }
+    @media (min-width: 1024px) { .aside-panel { display: block; position: sticky; top: 76px; } }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+    label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 6px; color: #334155; }
+    input[type="text"], input[type="date"], input[type="search"], textarea {
+      width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: 12px; font-size: 14px; font-family: inherit; background: #fff; color: var(--text);
+    }
+    textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+    .field { margin-bottom: 14px; }
+    .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip-btn {
+      min-height: 32px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--border);
+      background: #f8fafc; color: #334155; font-size: 12px; font-weight: 500; cursor: pointer;
+    }
+    .chip-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .priority-group { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .priority-btn {
+      min-height: 44px; border: 1px solid var(--border); background: #fff; border-radius: 12px;
+      font-weight: 600; font-size: 14px; cursor: pointer;
+    }
+    .priority-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+    .submit-btn {
+      width: 100%; min-height: 46px; background: var(--accent); color: #fff; border: 0;
+      border-radius: 12px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 6px;
+    }
+    .submit-btn:hover { background: var(--accent-hover); }
+    .btn-secondary {
+      min-height: 40px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); font-size: 12px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-secondary:hover { background: #f1f5f9; }
+    .btn-secondary.active { background: #eff6ff; color: var(--accent); border-color: #bfdbfe; }
+    .toolbar { display: flex; flex-direction: column; gap: 12px; margin-bottom: 14px; }
+    @media (min-width: 720px) {
+      .toolbar { flex-direction: row; align-items: center; justify-content: space-between; }
+    }
+    .toolbar-left { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .tab-group { display: inline-flex; gap: 4px; background: #e2e8f0; padding: 4px; border-radius: 12px; }
+    .tab-btn {
+      min-height: 36px; padding: 0 14px; border-radius: 9px; border: 0; background: transparent;
+      cursor: pointer; font-weight: 600; font-size: 12px; color: #475569; white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .tab-btn.active { background: #fff; color: var(--text); }
+    .course-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; }
+    .course-btn {
+      min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border);
+      background: #fff; color: #334155; font-size: 12px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
+    }
+    .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+    .calendar-box {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 16px; margin-bottom: 16px;
+    }
+    .cal-header {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border);
+    }
+    .cal-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-top: 12px; }
+    @media (min-width: 720px) { .cal-grid { grid-template-columns: repeat(7, 1fr); } }
+    .cal-day {
+      border: 1px solid var(--border); border-radius: 12px; padding: 10px;
+      min-height: 112px; background: #fcfcfd;
+    }
+    .cal-day.today { border-color: #93c5fd; background: rgba(239,246,255,0.5); }
+    .cal-day-head {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 12px; font-weight: 700; padding-bottom: 6px; margin-bottom: 8px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .today-badge {
+      background: var(--accent); color: #fff; border-radius: 6px;
+      padding: 1px 6px; font-size: 11px;
+    }
+    .cal-item {
+      border: 1px solid; border-radius: 8px; padding: 6px 8px; margin-bottom: 6px;
+      font-size: 12px; cursor: pointer;
+    }
+    .cal-item.done { opacity: 0.5; text-decoration: line-through; }
+    .cards { display: grid; grid-template-columns: 1fr; gap: 14px; }
+    @media (min-width: 640px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+      padding: 18px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px;
+      transition: opacity 0.15s ease;
+    }
+    .card.urgent { background: var(--danger-bg); border-color: var(--danger-border); }
+    .card.done { opacity: 0.5; }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .check-wrap { display: flex; gap: 10px; align-items: flex-start; flex: 1; min-width: 0; }
+    .check-btn {
+      width: 26px; height: 26px; min-width: 26px; border-radius: 8px; border: 2px solid #94a3b8;
+      background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; margin-top: 1px;
+    }
+    .card.done .check-btn { background: #0f172a; border-color: #0f172a; color: #fff; }
+    .title { font-size: 16px; font-weight: 700; word-break: keep-all; }
+    .card.done .title { text-decoration: line-through; color: var(--muted); }
+    .meta {
+      margin-top: 6px; font-size: 12px; color: var(--muted);
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    }
+    .dday { text-align: right; font-variant-numeric: tabular-nums; flex-shrink: 0; }
+    .dday-num { font-size: 18px; font-weight: 700; color: #1e293b; }
+    .card.urgent .dday-num { color: var(--danger); }
+    .dday-sub { font-size: 11px; color: var(--muted); font-weight: 600; }
+    .card.urgent .dday-sub { color: var(--danger); }
+    .card-actions {
+      padding-top: 10px; border-top: 1px solid #f1f5f9;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .action-btn {
+      min-height: 36px; padding: 0 10px; border: 0; background: transparent;
+      color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 600; border-radius: 8px;
+    }
+    .action-btn:hover { background: #f1f5f9; color: var(--text); }
+    .action-btn.del:hover { background: #fef2f2; color: var(--danger); }
+    footer {
+      border-top: 1px solid var(--border); background: var(--surface); padding: 20px 16px;
+      margin-top: 32px;
+    }
+    .footer-inner {
+      max-width: 1152px; margin: 0 auto; display: flex; flex-wrap: wrap;
+      justify-content: space-between; align-items: center; gap: 12px; font-size: 12px; color: var(--muted);
+    }
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(2px);
+      display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: #fff; border: 1px solid var(--border); border-radius: 16px;
+      padding: 20px; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto;
+    }
+    .modal.wide { max-width: 680px; }
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+      background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 12px;
+      font-size: 13px; display: none; align-items: center; gap: 12px; z-index: 60;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .toast.open { display: flex; }
+    .draft-row {
+      border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 10px;
+      display: grid; grid-template-columns: 28px 1fr 28px; gap: 10px; align-items: start;
+    }
+    .draft-inputs { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    @media (min-width: 640px) { .draft-inputs { grid-template-columns: 1fr 1.4fr 130px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <h1 class="brand">과제 마감 플래너</h1>
+      <div class="nav-links">
+        <button type="button" class="nav-link active" data-nav="week">이번 주</button>
+        <button type="button" class="nav-link" data-nav="all">전체 과제</button>
+        <button type="button" class="nav-link" data-nav="completed">완료 보관함</button>
+      </div>
+      <button type="button" id="headerNewBtn" class="btn-primary">+ 새 과제</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="summary-bar">
+      <div>
+        <h2 style="margin:0;font-size:24px;font-weight:700;">마감일 기준 과제 현황</h2>
+        <p style="margin:6px 0 0;font-size:14px;color:var(--muted);">과목별 고유 색상으로 구분하고, D-3 이내 과제는 빨간색으로 강조합니다.</p>
+      </div>
+      <div class="stats-grid" id="statsGrid"></div>
+    </section>
+
+    <div class="layout">
+      <aside class="aside-panel">
+        <div class="panel" id="desktopFormHost"></div>
+      </aside>
+
+      <section>
+        <div class="toolbar">
+          <div class="toolbar-left">
+            <div class="tab-group">
+              <button type="button" class="tab-btn active" data-filter="week" id="tabWeek">이번 주</button>
+              <button type="button" class="tab-btn" data-filter="all" id="tabAll">전체</button>
+              <button type="button" class="tab-btn" data-filter="completed" id="tabCompleted">완료</button>
+            </div>
+            <button type="button" id="toggleCalBtn" class="btn-secondary active">주간 달력</button>
+            <button type="button" id="openImportBtn" class="btn-secondary">강의계획서에서 가져오기</button>
+            <button type="button" id="exportIcsBtn" class="btn-secondary">캘린더로 내보내기</button>
+          </div>
+          <div style="min-width:210px;flex:1;max-width:280px;">
+            <input type="search" id="searchInput" placeholder="과목명 또는 과제 검색" />
+          </div>
+        </div>
+
+        <div id="courseStrip" class="course-strip"></div>
+        <div id="weeklyCal" class="calendar-box"></div>
+        <div id="cards" class="cards"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <span>모든 과제 데이터는 현재 브라우저(localStorage)에 자동 저장됩니다.</span>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;">
+        <button type="button" id="clearCompletedBtn" class="btn-secondary">완료 항목 삭제</button>
+        <button type="button" id="clearAllBtn" class="btn-secondary">목록 전체 비우기</button>
+        <button type="button" id="loadSampleBtn" class="btn-secondary">예시 과제 다시 불러오기</button>
+        <button type="button" id="footerIcsBtn" class="btn-secondary">캘린더로 내보내기 (.ics)</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Mobile Form Modal -->
+  <div id="formModal" class="modal-bg" role="dialog" aria-modal="true">
+    <div class="modal" id="mobileFormHost"></div>
+  </div>
+
+  <!-- Confirm Delete Modal -->
+  <div id="confirmModal" class="modal-bg" role="alertdialog" aria-modal="true">
+    <div class="modal">
+      <h3 id="confirmTitle" style="margin:0 0 8px;font-size:16px;">과제를 삭제할까요?</h3>
+      <p id="confirmText" style="margin:0;font-size:14px;color:#475569;"></p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px;">
+        <button type="button" id="cancelDelBtn" class="btn-secondary">취소</button>
+        <button type="button" id="confirmDelBtn" class="btn-primary" style="background:#dc2626;">삭제하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Syllabus Import Modal -->
+  <div id="importModal" class="modal-bg" role="dialog" aria-modal="true">
+    <div class="modal wide">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:16px;">강의계획서에서 가져오기</h3>
+        <button type="button" id="closeImportBtn" class="action-btn">닫기</button>
+      </div>
+      <div class="field">
+        <label for="impDefaultCourse">기본 과목명 (선택)</label>
+        <input type="text" id="impDefaultCourse" placeholder="예: 운영체제" />
+      </div>
+      <div class="field">
+        <label for="impFile">PDF 또는 CSV 파일 선택</label>
+        <input type="file" id="impFile" accept=".pdf,.csv,application/pdf,text/csv" />
+      </div>
+      <div class="field">
+        <label for="impText">강의계획서 문장 또는 CSV 내용</label>
+        <textarea id="impText" placeholder="과목명, 과제명, 마감일이 포함된 문장을 붙여넣으세요. 연도가 없는 날짜는 올해로 처리됩니다."></textarea>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:14px;">
+        <span style="font-size:12px;color:var(--muted);">확인 후 '모두 추가'를 눌러야 등록됩니다.</span>
+        <button type="button" id="analyzeBtn" class="btn-primary" style="background:#0f172a;">분석하기</button>
+      </div>
+      <div id="importErr" style="display:none;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;padding:10px;border-radius:10px;font-size:12px;margin-bottom:12px;"></div>
+      <div id="draftList"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+        <button type="button" id="cancelImportBtn" class="btn-secondary">취소</button>
+        <button type="button" id="addAllDraftsBtn" class="btn-primary" disabled>모두 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <span id="toastMsg"></span>
+    <button type="button" id="undoBtn" style="display:none;border:0;background:#1e293b;color:#93c5fd;padding:4px 10px;border-radius:8px;font-weight:600;cursor:pointer;">되돌리기</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'campus_assignment_planner_v1';
+    const INIT_KEY = 'campus_assignment_planner_initialized_v1';
+    const PRIORITY_RANK = { high: 0, medium: 1, low: 2 };
+    const PRIORITY_LABEL = { high: '상', medium: '중', low: '하' };
+    const PALETTE = [
+      { text: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe', swatch: '#2563eb' },
+      { text: '#0f766e', bg: '#f0fdfa', border: '#99f6e4', swatch: '#0d9488' },
+      { text: '#6d28d9', bg: '#f5f3ff', border: '#ddd6fe', swatch: '#7c3aed' },
+      { text: '#92400e', bg: '#fffbeb', border: '#fde68a', swatch: '#d97706' },
+      { text: '#047857', bg: '#ecfdf5', border: '#a7f3d0', swatch: '#059669' },
+      { text: '#be123c', bg: '#fff1f2', border: '#fecdd3', swatch: '#e11d48' },
+      { text: '#4338ca', bg: '#eef2ff', border: '#c7d2fe', swatch: '#4f46e5' },
+      { text: '#0369a1', bg: '#f0f9ff', border: '#bae6fd', swatch: '#0284c7' },
+      { text: '#c2410c', bg: '#fff7ed', border: '#fed7aa', swatch: '#ea580c' },
+      { text: '#a21caf', bg: '#fdf4ff', border: '#f5d0fe', swatch: '#c026d3' }
+    ];
+
+    function addDaysStr(offset) {
+      const n = new Date();
+      const d = new Date(n.getFullYear(), n.getMonth(), n.getDate() + offset);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    }
+
+    function createSampleTasks() {
+      const now = Date.now();
+      return [
+        { id: 's1', course: '운영체제', title: '프로세스 스케줄링 시뮬레이터 구현', dueDate: addDaysStr(0), priority: 'high', completed: false, createdAt: now - 5000 },
+        { id: 's2', course: '데이터베이스', title: 'ERD 정규화 보고서 및 SQL 쿼리 작성', dueDate: addDaysStr(2), priority: 'high', completed: false, createdAt: now - 4000 },
+        { id: 's3', course: '컴퓨터네트워크', title: 'TCP 혼잡 제어 분석 과제', dueDate: addDaysStr(3), priority: 'medium', completed: false, createdAt: now - 3000 },
+        { id: 's4', course: '기술글쓰기', title: '전공 주제 비평 에세이 초안 제출', dueDate: addDaysStr(5), priority: 'medium', completed: false, createdAt: now - 2000 },
+        { id: 's5', course: '선형대수학', title: '고유값과 대각화 연습문제 4장', dueDate: addDaysStr(8), priority: 'low', completed: false, createdAt: now - 1000 },
+        { id: 's6', course: '자료구조', title: 'AVL 트리 삽입·삭제 구현', dueDate: addDaysStr(-1), priority: 'high', completed: true, createdAt: now - 6000 }
+      ];
+    }
+
+    let tasks = [];
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved !== null) tasks = JSON.parse(saved);
+      else if (!localStorage.getItem(INIT_KEY)) tasks = createSampleTasks();
+    } catch (e) { tasks = createSampleTasks(); }
+
+    let filter = 'week';
+    let showCal = true;
+    let weekOffset = 0;
+    let courseFilter = 'all';
+    let searchQuery = '';
+    let editingId = null;
+    let formPriority = 'high';
+    let pendingConfirm = null;
+    let undoSnapshot = null;
+    let toastTimer = null;
+    let importDrafts = [];
+    let impPdfBase64 = '';
+    let impFileName = '';
+
+    function save() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        localStorage.setItem(INIT_KEY, '1');
+      } catch (e) {}
+    }
+
+    function showToast(msg, snapshot) {
+      undoSnapshot = snapshot || null;
+      document.getElementById('toastMsg').textContent = msg;
+      document.getElementById('undoBtn').style.display = undoSnapshot ? 'inline-block' : 'none';
+      document.getElementById('toast').classList.add('open');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => document.getElementById('toast').classList.remove('open'), 4500);
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, ch => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[ch]));
+    }
+
+    function hashStr(s) {
+      let h = 5381;
+      for (let i = 0; i < s.length; i++) h = (h * 33) ^ s.charCodeAt(i);
+      return Math.abs(h);
+    }
+
+    function getCourses() {
+      return Array.from(new Set(tasks.map(t => (t.course || '').trim()).filter(Boolean))).sort((a,b) => a.localeCompare(b, 'ko'));
+    }
+
+    function getCourseColors(courses) {
+      const map = {}, used = new Set();
+      courses.forEach(c => {
+        const s = hashStr(c) % PALETTE.length; let idx = s;
+        if (used.size < PALETTE.length) {
+          for (let o = 0; o < PALETTE.length; o++) {
+            const cand = (s + o) % PALETTE.length;
+            if (!used.has(cand)) { idx = cand; break; }
+          }
+          used.add(idx);
+        }
+        map[c] = PALETTE[idx];
+      });
+      return map;
+    }
+
+    function getWeekDays(offset) {
+      const now = new Date();
+      const todayStr = addDaysStr(0);
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diff + offset * 7);
+      const labels = ['월','화','수','목','금','토','일'];
+      return labels.map((label, i) => {
+        const d = new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i);
+        const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        return { label, monthNum: d.getMonth() + 1, dayNum: d.getDate(), dateStr, isToday: dateStr === todayStr };
+      });
+    }
+
+    function getDday(dueDate, completed) {
+      if (completed) return { label: '완료', sub: '제출 완료', urgent: false };
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const p = dueDate.split('-').map(Number);
+      const due = new Date(p[0], p[1] - 1, p[2]);
+      const diff = Math.round((due - today) / 86400000);
+      if (diff < 0) return { label: 'D+' + Math.abs(diff), sub: '기한 지남', urgent: true };
+      if (diff === 0) return { label: 'D-Day', sub: '오늘 마감', urgent: true };
+      if (diff <= 3) return { label: 'D-' + diff, sub: '마감 임박', urgent: true };
+      return { label: 'D-' + diff, sub: '진행 중', urgent: false };
+    }
+
+    function sortTasks(list) {
+      return [...list].sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        if (a.dueDate !== b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        return (PRIORITY_RANK[a.priority] ?? 1) - (PRIORITY_RANK[b.priority] ?? 1);
+      });
+    }
+
+    function buildFormHtml(courses) {
+      const editing = editingId ? tasks.find(t => t.id === editingId) : null;
+      return '<h3 style="margin:0 0 14px;font-size:16px;">' + (editing ? '과제 수정' : '새 과제 등록') + '</h3>' +
+        '<form id="activeTaskForm">' +
+          '<div class="field"><label for="fCourse">과목명</label>' +
+            '<input id="fCourse" type="text" value="' + escapeHtml(editing ? editing.course : '') + '" placeholder="예: 운영체제" required />' +
+            (courses.length ? '<div class="chip-row">' + courses.slice(0,7).map(c => '<button type="button" class="chip-btn" onclick="pickCourse(\'' + escapeHtml(c) + '\')">' + escapeHtml(c) + '</button>').join('') + '</div>' : '') +
+          '</div>' +
+          '<div class="field"><label for="fTitle">과제명</label>' +
+            '<input id="fTitle" type="text" value="' + escapeHtml(editing ? editing.title : '') + '" placeholder="예: 스케줄링 과제 제출" required />' +
+          '</div>' +
+          '<div class="field"><label for="fDue">마감일</label>' +
+            '<input id="fDue" type="date" value="' + escapeHtml(editing ? editing.dueDate : addDaysStr(3)) + '" required />' +
+            '<div class="chip-row">' +
+              '<button type="button" class="chip-btn" onclick="pickDue(0)">오늘</button>' +
+              '<button type="button" class="chip-btn" onclick="pickDue(1)">내일</button>' +
+              '<button type="button" class="chip-btn" onclick="pickDue(3)">+3일</button>' +
+              '<button type="button" class="chip-btn" onclick="pickDue(7)">+7일</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="field"><label>중요도</label><div class="priority-group">' +
+            ['high','medium','low'].map(p => '<button type="button" class="priority-btn' + (formPriority === p ? ' active' : '') + '" onclick="setPrio(\'' + p + '\')">' + PRIORITY_LABEL[p] + '</button>').join('') +
+          '</div></div>' +
+          '<button type="submit" class="submit-btn">' + (editing ? '수정 내용 저장' : '과제 추가하기') + '</button>' +
+          (editing ? '<button type="button" class="btn-secondary" style="width:100%;justify-content:center;margin-top:8px;" onclick="cancelEdit()">수정 취소</button>' : '') +
+        '</form>';
+    }
+
+    function attachFormHandler() {
+      const form = document.getElementById('activeTaskForm');
+      if (!form) return;
+      form.addEventListener('submit', e => {
+        e.preventDefault();
+        const course = document.getElementById('fCourse').value.trim();
+        const title = document.getElementById('fTitle').value.trim();
+        const dueDate = document.getElementById('fDue').value;
+        if (!course || !title || !dueDate) return;
+        if (editingId) {
+          tasks = tasks.map(t => t.id === editingId ? { ...t, course, title, dueDate, priority: formPriority } : t);
+          editingId = null;
+          showToast('과제를 수정했습니다.');
+        } else {
+          tasks.push({ id: String(Date.now()) + '-' + Math.random().toString(36).slice(2,6), course, title, dueDate, priority: formPriority, completed: false, createdAt: Date.now() });
+          showToast('과제를 추가했습니다.');
+        }
+        document.getElementById('formModal').classList.remove('open');
+        save(); render();
+      });
+    }
+
+    function render() {
+      const courses = getCourses();
+      const colorMap = getCourseColors(courses);
+      const thisWeek = getWeekDays(0);
+      const twStart = thisWeek[0].dateStr, twEnd = thisWeek[6].dateStr;
+      const sorted = sortTasks(tasks);
+
+      const isMobile = window.innerWidth < 1024;
+      document.getElementById('desktopFormHost').innerHTML = isMobile ? '' : buildFormHtml(courses);
+      document.getElementById('mobileFormHost').innerHTML = isMobile ? buildFormHtml(courses) : '';
+      attachFormHandler();
+
+      const activeCnt = tasks.filter(t => !t.completed).length;
+      const urgentCnt = tasks.filter(t => !t.completed && getDday(t.dueDate, false).urgent).length;
+      const doneCnt = tasks.filter(t => t.completed).length;
+      const weekCnt = tasks.filter(t => t.dueDate >= twStart && t.dueDate <= twEnd).length;
+
+      document.getElementById('statsGrid').innerHTML =
+        '<div class="stat-cell"><div class="stat-label">남은 과제</div><div class="stat-val">' + activeCnt + '</div></div>' +
+        '<div class="stat-cell"><div class="stat-label">D-3 이내</div><div class="stat-val" style="color:' + (urgentCnt ? '#dc2626' : '#0f172a') + '">' + urgentCnt + '</div></div>' +
+        '<div class="stat-cell"><div class="stat-label">제출 완료</div><div class="stat-val" style="color:#047857">' + doneCnt + '</div></div>' +
+        '<div class="stat-cell"><div class="stat-label">수강 과목</div><div class="stat-val">' + courses.length + '</div></div>';
+
+      document.getElementById('tabWeek').textContent = '이번 주 (' + weekCnt + ')';
+      document.getElementById('tabAll').textContent = '전체 (' + tasks.length + ')';
+      document.getElementById('tabCompleted').textContent = '완료 (' + doneCnt + ')';
+
+      const calMatched = sorted.filter(t => {
+        if (courseFilter !== 'all' && t.course !== courseFilter) return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          if (!t.course.toLowerCase().includes(q) && !t.title.toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+
+      const visible = calMatched.filter(t => {
+        if (filter === 'week') return t.dueDate >= twStart && t.dueDate <= twEnd;
+        if (filter === 'completed') return t.completed;
+        return true;
+      });
+
+      const strip = document.getElementById('courseStrip');
+      strip.innerHTML = courses.length ? '<button type="button" class="course-btn" style="' + (courseFilter === 'all' ? 'background:#0f172a;color:#fff;border-color:#0f172a;' : '') + '" onclick="setCourseFilter(\'all\')">전체 과목</button>' +
+        courses.map(c => {
+          const col = colorMap[c]; const act = courseFilter === c;
+          return '<button type="button" class="course-btn" style="' + (act ? 'background:' + col.bg + ';color:' + col.text + ';border-color:' + col.border + ';' : '') + '" onclick="setCourseFilter(\'' + escapeHtml(c) + '\')"><span class="swatch" style="background:' + col.swatch + ';"></span>' + escapeHtml(c) + '</button>';
+        }).join('') : '';
+
+      const calEl = document.getElementById('weeklyCal');
+      if (filter !== 'completed' && showCal) {
+        calEl.style.display = 'block';
+        const days = getWeekDays(weekOffset);
+        const range = days[0].monthNum + '월 ' + days[0].dayNum + '일 (' + days[0].label + ') – ' + days[6].monthNum + '월 ' + days[6].dayNum + '일 (' + days[6].label + ')';
+        calEl.innerHTML = '<div class="cal-header"><div><strong>' + (weekOffset === 0 ? '이번 주 마감 달력' : weekOffset > 0 ? weekOffset + '주 뒤 마감 달력' : Math.abs(weekOffset) + '주 전 마감 달력') + '</strong><div style="font-size:12px;color:var(--muted);">' + range + '</div></div>' +
+          '<div style="display:flex;gap:6px;"><button type="button" class="btn-secondary" onclick="moveWeek(-1)">‹</button><button type="button" class="btn-secondary" onclick="moveWeek(0,true)">이번 주</button><button type="button" class="btn-secondary" onclick="moveWeek(1)">›</button></div></div>' +
+          '<div class="cal-grid">' + days.map(day => {
+            const items = calMatched.filter(t => t.dueDate === day.dateStr);
+            return '<div class="cal-day' + (day.isToday ? ' today' : '') + '"><div class="cal-day-head"><span>' + day.label + '</span>' + (day.isToday ? '<span class="today-badge">' + day.dayNum + '</span>' : '<span>' + day.dayNum + '</span>') + '</div>' +
+              (items.length === 0 ? '<div style="font-size:11px;color:#94a3b8;text-align:center;padding-top:16px;">마감 없음</div>' : items.map(t => {
+                const col = colorMap[t.course] || PALETTE[0];
+                return '<div class="cal-item' + (t.completed ? ' done' : '') + '" style="background:' + col.bg + ';border-color:' + col.border + ';color:' + col.text + ';" onclick="toggleTask(\'' + escapeHtml(t.id) + '\')">' +
+                  '<div style="font-size:11px;font-weight:700;">' + escapeHtml(t.course) + '</div><div>' + escapeHtml(t.title) + '</div></div>';
+              }).join('')) + '</div>';
+          }).join('') + '</div>';
+      } else {
+        calEl.style.display = 'none';
+      }
+
+      const cardsEl = document.getElementById('cards');
+      if (visible.length === 0) {
+        cardsEl.innerHTML = '<div class="panel" style="grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 20px;">표시할 과제가 없습니다.</div>';
+        return;
+      }
+      cardsEl.innerHTML = visible.map(t => {
+        const d = getDday(t.dueDate, t.completed);
+        const col = colorMap[t.course] || PALETTE[0];
+        const cls = 'card' + (d.urgent ? ' urgent' : '') + (t.completed ? ' done' : '');
+        return '<article class="' + cls + '"><div><div class="card-top"><div class="check-wrap">' +
+          '<button type="button" class="check-btn" onclick="toggleTask(\'' + escapeHtml(t.id) + '\')">' + (t.completed ? '✓' : '') + '</button>' +
+          '<div style="min-width:0;flex:1;"><div class="title">' + escapeHtml(t.title) + '</div>' +
+          '<div class="meta"><span style="color:' + col.text + ';font-weight:700;display:inline-flex;align-items:center;gap:4px;"><span class="swatch" style="background:' + col.swatch + ';"></span>' + escapeHtml(t.course) + '</span> · 중요도 ' + PRIORITY_LABEL[t.priority] + ' · ' + escapeHtml(t.dueDate) + '</div></div></div>' +
+          '<div class="dday"><div class="dday-num">' + d.label + '</div><div class="dday-sub">' + d.sub + '</div></div></div></div>' +
+          '<div class="card-actions"><span style="font-size:11px;color:#94a3b8;">' + escapeHtml(t.dueDate) + '</span><div><button type="button" class="action-btn" onclick="startEdit(\'' + escapeHtml(t.id) + '\')">수정</button><button type="button" class="action-btn del" onclick="askDelete(\'' + escapeHtml(t.id) + '\')">삭제</button></div></div></article>';
+      }).join('');
+    }
+
+    window.pickCourse = c => { const el = document.getElementById('fCourse'); if (el) el.value = c; };
+    window.pickDue = off => { const el = document.getElementById('fDue'); if (el) el.value = addDaysStr(off); };
+    window.setPrio = p => { formPriority = p; render(); };
+    window.cancelEdit = () => { editingId = null; formPriority = 'high'; document.getElementById('formModal').classList.remove('open'); render(); };
+    window.setCourseFilter = c => { courseFilter = (c === 'all' || courseFilter === c) ? 'all' : c; render(); };
+    window.moveWeek = (delta, reset) => { weekOffset = reset ? 0 : weekOffset + delta; render(); };
+    window.toggleTask = id => { tasks = tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t); save(); render(); };
+    window.startEdit = id => {
+      const t = tasks.find(x => x.id === id); if (!t) return;
+      editingId = id; formPriority = t.priority; render();
+      if (window.innerWidth < 1024) document.getElementById('formModal').classList.add('open');
+    };
+    window.askDelete = id => {
+      const t = tasks.find(x => x.id === id); if (!t) return;
+      pendingConfirm = { type: 'single', id };
+      document.getElementById('confirmTitle').textContent = '과제를 삭제할까요?';
+      document.getElementById('confirmText').textContent = '[' + t.course + '] ' + t.title + ' 과제를 목록에서 삭제합니다.';
+      document.getElementById('confirmModal').classList.add('open');
+    };
+
+    function setTab(next) {
+      filter = next;
+      if (next === 'week') { showCal = true; weekOffset = 0; }
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === next));
+      document.querySelectorAll('.nav-link').forEach(b => b.classList.toggle('active', b.dataset.nav === next));
+      document.getElementById('toggleCalBtn').style.display = next === 'completed' ? 'none' : 'inline-flex';
+      render();
+    }
+
+    document.querySelectorAll('.tab-btn').forEach(b => b.addEventListener('click', () => setTab(b.dataset.filter)));
+    document.querySelectorAll('.nav-link').forEach(b => b.addEventListener('click', () => setTab(b.dataset.nav)));
+    document.getElementById('toggleCalBtn').addEventListener('click', () => {
+      showCal = !showCal;
+      document.getElementById('toggleCalBtn').classList.toggle('active', showCal);
+      render();
+    });
+    document.getElementById('searchInput').addEventListener('input', e => { searchQuery = e.target.value; render(); });
+    document.getElementById('headerNewBtn').addEventListener('click', () => {
+      editingId = null; formPriority = 'high'; render();
+      if (window.innerWidth < 1024) document.getElementById('formModal').classList.add('open');
+      else { const el = document.getElementById('fCourse'); if (el) el.focus(); }
+    });
+    document.getElementById('formModal').addEventListener('click', e => { if (e.target.id === 'formModal') cancelEdit(); });
+    document.getElementById('cancelDelBtn').addEventListener('click', () => { pendingConfirm = null; document.getElementById('confirmModal').classList.remove('open'); });
+    document.getElementById('confirmDelBtn').addEventListener('click', () => {
+      const snap = [...tasks];
+      if (pendingConfirm && pendingConfirm.type === 'single') { tasks = tasks.filter(t => t.id !== pendingConfirm.id); showToast('과제가 삭제되었습니다.', snap); }
+      else if (pendingConfirm && pendingConfirm.type === 'completed') { tasks = tasks.filter(t => !t.completed); showToast('완료 항목을 삭제했습니다.', snap); }
+      else if (pendingConfirm && pendingConfirm.type === 'all') { tasks = []; showToast('모든 과제를 비웠습니다.', snap); }
+      pendingConfirm = null; document.getElementById('confirmModal').classList.remove('open'); save(); render();
+    });
+    document.getElementById('clearCompletedBtn').addEventListener('click', () => {
+      if (!tasks.some(t => t.completed)) return showToast('완료된 과제가 없습니다.');
+      pendingConfirm = { type: 'completed' };
+      document.getElementById('confirmTitle').textContent = '완료된 과제를 삭제할까요?';
+      document.getElementById('confirmText').textContent = '완료 처리된 과제를 모두 삭제합니다.';
+      document.getElementById('confirmModal').classList.add('open');
+    });
+    document.getElementById('clearAllBtn').addEventListener('click', () => {
+      if (!tasks.length) return showToast('이미 목록이 비어 있습니다.');
+      pendingConfirm = { type: 'all' };
+      document.getElementById('confirmTitle').textContent = '모든 과제를 비울까요?';
+      document.getElementById('confirmText').textContent = '등록된 모든 과제를 삭제합니다.';
+      document.getElementById('confirmModal').classList.add('open');
+    });
+    document.getElementById('loadSampleBtn').addEventListener('click', () => {
+      const snap = [...tasks]; tasks = createSampleTasks(); save(); setTab('week'); showToast('예시 과제를 불러왔습니다.', snap);
+    });
+    document.getElementById('undoBtn').addEventListener('click', () => {
+      if (!undoSnapshot) return;
+      tasks = undoSnapshot; undoSnapshot = null; document.getElementById('toast').classList.remove('open'); save(); render();
+    });
+
+    function exportIcs() {
+      const inc = sortTasks(tasks).filter(t => !t.completed);
+      if (!inc.length) return showToast('내보낼 미완료 과제가 없습니다.');
+      const esc = s => String(s).replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/;/g, '\\;').replace(/,/g, '\\,');
+      const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Campus Assignment Planner//KO', 'CALSCALE:GREGORIAN'];
+      inc.forEach(t => {
+        const start = t.dueDate.replace(/-/g, '');
+        const p = t.dueDate.split('-').map(Number);
+        const next = new Date(p[0], p[1] - 1, p[2] + 1);
+        const end = next.getFullYear() + String(next.getMonth() + 1).padStart(2, '0') + String(next.getDate()).padStart(2, '0');
+        const sum = '[' + t.course + '] ' + t.title;
+        lines.push('BEGIN:VEVENT', 'UID:' + t.id + '@planner', 'DTSTART;VALUE=DATE:' + start, 'DTEND;VALUE=DATE:' + end, 'SUMMARY:' + esc(sum), 'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + esc(sum + ' 마감 하루 전입니다.'), 'TRIGGER:-P1D', 'END:VALARM', 'END:VEVENT');
+      });
+      lines.push('END:VCALENDAR', '');
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'assignments.ics'; a.click();
+      showToast('미완료 과제 ' + inc.length + '건을 .ics 파일로 내보냈습니다.');
+    }
+    document.getElementById('exportIcsBtn').addEventListener('click', exportIcs);
+    document.getElementById('footerIcsBtn').addEventListener('click', exportIcs);
+
+    function parseOfflineText(text, defCourse) {
+      const yr = new Date().getFullYear(), out = [];
+      let curCourse = defCourse || '미분류 과목';
+      text.split(/\r?\n/).forEach(line => {
+        const s = line.trim(); if (!s) return;
+        const bracket = s.match(/^\[([^\]]+)\]/); if (bracket) curCourse = bracket[1].trim();
+        const fullDate = s.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+        const shortDate = s.match(/(\d{1,2})\s*[./월-]\s*(\d{1,2})/);
+        let due = '';
+        if (fullDate) due = fullDate[1] + '-' + String(fullDate[2]).padStart(2, '0') + '-' + String(fullDate[3]).padStart(2, '0');
+        else if (shortDate) due = yr + '-' + String(shortDate[1]).padStart(2, '0') + '-' + String(shortDate[2]).padStart(2, '0');
+        if (due) out.push({ selected: true, course: curCourse, title: s.replace(/^[-*]\s*/, '').slice(0, 60), dueDate: due, priority: 'medium' });
+      });
+      return out;
+    }
+
+    function renderDrafts() {
+      const box = document.getElementById('draftList');
+      document.getElementById('addAllDraftsBtn').disabled = !importDrafts.some(d => d.selected);
+      if (!importDrafts.length) { box.innerHTML = ''; return; }
+      box.innerHTML = importDrafts.map((d, i) => '<div class="draft-row">' +
+        '<input type="checkbox" ' + (d.selected ? 'checked' : '') + ' onchange="toggleDraft(' + i + ',this.checked)" />' +
+        '<div class="draft-inputs">' +
+          '<input type="text" value="' + escapeHtml(d.course) + '" oninput="editDraft(' + i + ',\'course\',this.value)" />' +
+          '<input type="text" value="' + escapeHtml(d.title) + '" oninput="editDraft(' + i + ',\'title\',this.value)" />' +
+          '<input type="date" value="' + escapeHtml(d.dueDate) + '" oninput="editDraft(' + i + ',\'dueDate\',this.value)" />' +
+        '</div>' +
+        '<button type="button" class="action-btn del" onclick="removeDraft(' + i + ')">✕</button></div>').join('');
+    }
+    window.toggleDraft = (i, v) => { importDrafts[i].selected = v; renderDrafts(); };
+    window.editDraft = (i, k, v) => { importDrafts[i][k] = v; };
+    window.removeDraft = i => { importDrafts.splice(i, 1); renderDrafts(); };
+
+    document.getElementById('openImportBtn').addEventListener('click', () => document.getElementById('importModal').classList.add('open'));
+    ['closeImportBtn', 'cancelImportBtn'].forEach(id => document.getElementById(id).addEventListener('click', () => document.getElementById('importModal').classList.remove('open')));
+    document.getElementById('impFile').addEventListener('change', async e => {
+      const f = e.target.files[0]; if (!f) return;
+      impFileName = f.name; impPdfBase64 = '';
+      if (f.name.toLowerCase().endsWith('.pdf')) {
+        const r = new FileReader();
+        r.onload = () => { impPdfBase64 = String(r.result).split(',')[1] || ''; };
+        r.readAsDataURL(f);
+      } else {
+        const buf = await f.arrayBuffer();
+        try { document.getElementById('impText').value = new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^\uFEFF/, ''); }
+        catch { document.getElementById('impText').value = new TextDecoder('euc-kr').decode(buf); }
+      }
+    });
+    document.getElementById('analyzeBtn').addEventListener('click', async () => {
+      const text = document.getElementById('impText').value.trim();
+      const defCourse = document.getElementById('impDefaultCourse').value.trim();
+      const errEl = document.getElementById('importErr'); errEl.style.display = 'none';
+      if (!text && !impPdfBase64) { errEl.textContent = '문장을 입력하거나 PDF/CSV 파일을 선택해 주세요.'; errEl.style.display = 'block'; return; }
+      try {
+        if (location.protocol.startsWith('http')) {
+          const res = await fetch('/api/syllabus/parse', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, defaultCourse: defCourse, currentYear: new Date().getFullYear(), ...(impPdfBase64 ? { fileBase64: impPdfBase64, fileMimeType: 'application/pdf', fileName: impFileName } : {}) })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            importDrafts = (data.items || []).map(it => ({ selected: true, course: it.course, title: it.title, dueDate: it.dueDate, priority: it.priority || 'medium' }));
+            return renderDrafts();
+          }
+        }
+      } catch (e) {}
+      importDrafts = parseOfflineText(text, defCourse);
+      if (!importDrafts.length) { errEl.textContent = '일정을 추출하지 못했습니다. (로컬 HTML에서는 텍스트·CSV 기본 추출만 지원됩니다.)'; errEl.style.display = 'block'; }
+      renderDrafts();
+    });
+    document.getElementById('addAllDraftsBtn').addEventListener('click', () => {
+      const picked = importDrafts.filter(d => d.selected && d.title.trim() && d.dueDate);
+      picked.forEach((d, idx) => tasks.push({ id: String(Date.now()) + '-' + idx, course: d.course.trim() || '미분류 과목', title: d.title.trim(), dueDate: d.dueDate, priority: d.priority || 'medium', completed: false, createdAt: Date.now() + idx }));
+      importDrafts = []; impPdfBase64 = ''; document.getElementById('impText').value = '';
+      document.getElementById('importModal').classList.remove('open'); save(); setTab('all');
+      showToast('과제 ' + picked.length + '건을 추가했습니다.');
+    });
+
+    window.addEventListener('resize', render);
+    render();
+  </script>
+</body>
+</html>
